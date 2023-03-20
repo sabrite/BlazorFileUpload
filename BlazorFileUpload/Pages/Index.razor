@@ -1,0 +1,48 @@
+﻿@page "/"
+@using System.Net.Http.Headers
+@inject HttpClient _httpClient
+
+<PageTitle>Index</PageTitle>
+
+<InputFile class="custom-file-input" OnChange="@LoadFiles" multiple="multiple" />
+<button class="btn btn-primary" type="button" @onclick="UploadFiles">Upload</button>
+
+@code{
+    private IReadOnlyList<IBrowserFile>? _images;
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        _images = e.GetMultipleFiles();
+    }
+
+    private async Task UploadFiles()
+    {
+        const long maxFileSize = 1024 * 1024 * 300;
+        _httpClient.Timeout = TimeSpan.FromMinutes(10);
+        var uri = "https://localhost:7112/Files";
+        using var content = new MultipartFormDataContent();
+
+        try
+        {
+            foreach (var file in _images)
+            {
+                var fileContent = new StreamContent(file.OpenReadStream(maxFileSize));
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                content.Add(fileContent, "files", file.Name);
+            }
+
+            var response = await _httpClient.PostAsync(uri, content);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Console.WriteLine(ex);
+            throw;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+}
